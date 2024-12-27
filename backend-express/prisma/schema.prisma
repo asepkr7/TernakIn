@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String?  @db.VarChar(255)
+  email     String   @unique(map: "email") @db.VarChar(255)
+  username  String   @unique(map: "username") @db.VarChar(255)
+  password  String?  @db.VarChar(255)
+  role      Role     @default(seller) // Default role adalah SELLER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi ke Field (One-to-Many)
+  fields Field[] // Seorang User (Seller) bisa memiliki banyak produk
+  profile  Profile?
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+model Field {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  address     String   @db.VarChar(255)
+  city        String   @db.VarChar(255)
+  type        String   @db.VarChar(255)
+  image       String   @db.VarChar(255)
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  wide        Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  sellerId    Int // Foreign key ke User (Seller)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relasi ke User (Many-to-One)
+  seller User @relation(fields: [sellerId], references: [id])
+  transactions Transaction[]
+
+  @@map("fields")
+}
+
+model Profile {
+  id          Int      @id @default(autoincrement())
+  image       String?  @db.VarChar(255) // Gambar profil
+  address     String   @db.VarChar(255)
+  city        String?   @db.VarChar(255)
+  postalCode  String   @db.VarChar(10)
+  gender      String   @db.VarChar(10) // "male" atau "female"
+  phoneNumber String   @db.VarChar(15)
+  userId      Int      @unique // Foreign key ke User
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("profiles")
+}
+
+model Transaction {
+  id            Int      @id @default(autoincrement())
+  buyerId       Int      // Foreign key ke User (Buyer)
+  buyer         User     @relation(fields: [buyerId], references: [id])
+  fieldId       Int      // Foreign key ke Field
+  field         Field    @relation(fields: [fieldId], references: [id])
+  qty           Int      @default(1) // Jumlah field yang disewa
+  duration      Int      @default(1) // Lama sewa dalam bulan
+  totalPrice    Decimal  @db.Decimal(10, 2) // Total harga transaksi
+  paymentMethod String   @db.VarChar(50) // Metode pembayaran
+  date          DateTime @default(now())
+  status        String   @default("pending") // Status transaksi (pending, success, cancelled)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  details       TransactionDetail[]
+  @@map("transactions")
+}
+
+model TransactionDetail {
+  id            Int      @id @default(autoincrement())
+  transactionId Int      // Foreign key ke Transaction
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  health        Int      @default(0) // Jumlah barang dengan status "health"
+  sick          Int      @default(0) // Jumlah barang dengan status "sick"
+  death         Int      @default(0) // Jumlah barang dengan status "death"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("transaction_details")
+}
+
+
+enum Role {
+  seller
+  buyer
+}
